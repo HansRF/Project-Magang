@@ -1,0 +1,778 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  color: #e5e7eb;
+  background: #020617;
+
+  font-synthesis: none;
+}
+
+html {
+  background: #020617;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #020617;
+}
+
+button {
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* =====================================================
+   APP
+===================================================== */
+
+.app {
+  min-height: 100vh;
+
+  padding: 24px 16px;
+
+  background:
+    radial-gradient(circle at top, rgba(30, 64, 175, 0.2), transparent 35%),
+    #020617;
+}
+
+.shell {
+  width: min(680px, 100%);
+  margin: 0 auto;
+}
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.header {
+  display: flex;
+  align-items: center;
+
+  gap: 13px;
+
+  margin-bottom: 18px;
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+
+  display: grid;
+  place-items: center;
+
+  flex: 0 0 auto;
+
+  border-radius: 14px;
+
+  color: white;
+
+  background: #2563eb;
+
+  box-shadow: 0 12px 35px rgba(37, 99, 235, 0.28);
+}
+
+h1 {
+  margin: 0;
+
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.header p {
+  margin: 4px 0 0;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+}
+
+/* =====================================================
+   CARDS
+===================================================== */
+
+.scanner-card,
+.result-card,
+.alert {
+  border: 1px solid #1e293b;
+
+  background: rgba(15, 23, 42, 0.88);
+
+  border-radius: 22px;
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
+}
+
+.scanner-card {
+  padding: 12px;
+}
+
+/* =====================================================
+   CAMERA
+===================================================== */
+
+.video-wrap {
+  position: relative;
+
+  /*
+    Diperbesar supaya tape bisa
+    diarahkan dari jarak lebih jauh.
+  */
+
+  height: min(75vh, 600px);
+
+  min-height: 360px;
+
+  overflow: hidden;
+
+  border-radius: 16px;
+
+  background: #000;
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  display: block;
+}
+
+.camera-placeholder {
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: center;
+
+  align-items: center;
+
+  gap: 8px;
+
+  color: #64748b;
+
+  background: #020617;
+
+  text-align: center;
+}
+
+.camera-placeholder strong {
+  color: #cbd5e1;
+
+  font-size: 16px;
+}
+
+.camera-placeholder span {
+  font-size: 13px;
+
+  color: #64748b;
+}
+
+/* =====================================================
+   SCAN OVERLAY
+===================================================== */
+
+.scan-overlay {
+  position: absolute;
+
+  inset: 0;
+
+  display: grid;
+
+  place-items: center;
+
+  pointer-events: none;
+
+  /*
+    Sangat transparan agar kamera
+    tetap terang.
+  */
+
+  background: rgba(2, 6, 23, 0.02);
+}
+
+/* =====================================================
+   SCAN BOX SUPER BESAR
+===================================================== */
+
+.scan-box {
+  position: relative;
+
+  /*
+    Hampir seluruh layar kamera.
+  */
+
+  width: 96%;
+
+  height: 94%;
+
+  max-width: none;
+
+  border-radius: 18px;
+
+  border: 1px solid rgba(96, 165, 250, 0.2);
+}
+
+/* =====================================================
+   CORNERS
+===================================================== */
+
+.corner {
+  position: absolute;
+
+  width: 48px;
+  height: 48px;
+
+  border-color: #60a5fa;
+
+  border-style: solid;
+
+  filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.7))
+    drop-shadow(0 0 12px rgba(96, 165, 250, 0.35));
+}
+
+.tl {
+  top: 0;
+  left: 0;
+
+  border-width: 4px 0 0 4px;
+
+  border-radius: 14px 0 0 0;
+}
+
+.tr {
+  top: 0;
+  right: 0;
+
+  border-width: 4px 4px 0 0;
+
+  border-radius: 0 14px 0 0;
+}
+
+.bl {
+  bottom: 0;
+  left: 0;
+
+  border-width: 0 0 4px 4px;
+
+  border-radius: 0 0 0 14px;
+}
+
+.br {
+  bottom: 0;
+  right: 0;
+
+  border-width: 0 4px 4px 0;
+
+  border-radius: 0 0 14px 0;
+}
+
+/* =====================================================
+   SCAN LINE
+===================================================== */
+
+.scan-line {
+  position: absolute;
+
+  left: 2%;
+  right: 2%;
+
+  top: 50%;
+
+  height: 2px;
+
+  background: #60a5fa;
+
+  box-shadow:
+    0 0 15px #60a5fa,
+    0 0 30px rgba(96, 165, 250, 0.55);
+
+  animation: scan 2.2s ease-in-out infinite;
+}
+
+@keyframes scan {
+  0%,
+  100% {
+    transform: translateY(-250px);
+
+    opacity: 0.25;
+  }
+
+  50% {
+    transform: translateY(250px);
+
+    opacity: 1;
+  }
+}
+
+/* =====================================================
+   SCAN TARGET
+===================================================== */
+
+.scan-target {
+  position: absolute;
+
+  left: 50%;
+
+  bottom: 18px;
+
+  transform: translateX(-50%);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 9px 14px;
+
+  border: 1px solid rgba(96, 165, 250, 0.4);
+
+  border-radius: 10px;
+
+  background: rgba(2, 6, 23, 0.72);
+
+  backdrop-filter: blur(8px);
+
+  white-space: nowrap;
+}
+
+.scan-target span {
+  color: #cbd5e1;
+
+  font-size: 11px;
+
+  font-weight: 700;
+}
+
+/* =====================================================
+   LOADING
+===================================================== */
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =====================================================
+   STATUS
+===================================================== */
+
+.status {
+  min-height: 21px;
+
+  margin: 12px 4px;
+
+  color: #94a3b8;
+
+  text-align: center;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+/* =====================================================
+   ACTIONS
+===================================================== */
+
+.actions {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 10px;
+}
+
+button {
+  border: 0;
+
+  cursor: pointer;
+}
+
+.primary,
+.secondary,
+.danger {
+  min-height: 48px;
+
+  border-radius: 13px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  font-weight: 700;
+
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.primary:hover,
+.secondary:hover,
+.danger:hover,
+.reset:hover,
+.icon-btn:hover {
+  transform: translateY(-1px);
+
+  opacity: 0.92;
+}
+
+.primary {
+  color: white;
+
+  background: #2563eb;
+}
+
+.secondary {
+  color: #dbeafe;
+
+  background: #1e293b;
+
+  border: 1px solid #334155;
+}
+
+.danger {
+  color: white;
+
+  background: #dc2626;
+}
+
+/* =====================================================
+   ALERT
+===================================================== */
+
+.alert {
+  display: flex;
+
+  gap: 10px;
+
+  align-items: flex-start;
+
+  margin-top: 12px;
+
+  padding: 14px;
+
+  color: #fecaca;
+
+  border-color: #7f1d1d;
+
+  background: rgba(69, 10, 10, 0.45);
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+.alert svg {
+  flex: 0 0 auto;
+
+  margin-top: 1px;
+}
+
+/* =====================================================
+   RESULT
+===================================================== */
+
+.result-card {
+  margin-top: 12px;
+
+  padding: 18px;
+}
+
+.result-head {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  gap: 15px;
+}
+
+.result-head small {
+  color: #64748b;
+
+  font-size: 11px;
+
+  font-weight: 800;
+
+  letter-spacing: 0.12em;
+}
+
+.result-head h2 {
+  margin: 7px 0 0;
+
+  min-height: 29px;
+
+  color: #f8fafc;
+
+  font-size: 24px;
+
+  word-break: break-all;
+
+  line-height: 1.25;
+}
+
+/* =====================================================
+   COPY BUTTON
+===================================================== */
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+
+  flex: 0 0 auto;
+
+  display: grid;
+
+  place-items: center;
+
+  color: #cbd5e1;
+
+  background: #1e293b;
+
+  border: 1px solid #334155;
+
+  border-radius: 12px;
+}
+
+/* =====================================================
+   SUCCESS
+===================================================== */
+
+.result-success {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  margin-top: 14px;
+
+  padding: 10px 12px;
+
+  color: #bbf7d0;
+
+  background: rgba(22, 101, 52, 0.2);
+
+  border: 1px solid rgba(34, 197, 94, 0.25);
+
+  border-radius: 10px;
+
+  font-size: 13px;
+
+  font-weight: 600;
+}
+
+/* =====================================================
+   FORMAT
+===================================================== */
+
+.format {
+  margin-top: 12px;
+
+  padding-top: 12px;
+
+  border-top: 1px solid #1e293b;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+}
+
+.format strong {
+  color: #e2e8f0;
+}
+
+/* =====================================================
+   RESET
+===================================================== */
+
+.reset {
+  width: 100%;
+
+  margin-top: 12px;
+
+  min-height: 44px;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  gap: 7px;
+
+  color: #94a3b8;
+
+  background: transparent;
+}
+
+/* =====================================================
+   FOOTER
+===================================================== */
+
+footer {
+  display: flex;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  margin-top: 22px;
+
+  color: #475569;
+
+  font-size: 11px;
+}
+
+/* =====================================================
+   TABLET / MOBILE
+===================================================== */
+
+@media (max-width: 520px) {
+  .app {
+    padding: 10px 8px;
+  }
+
+  .header {
+    margin-bottom: 13px;
+  }
+
+  /*
+    Kamera lebih tinggi di HP.
+  */
+
+  .video-wrap {
+    min-height: 420px;
+
+    height: 72vh;
+
+    border-radius: 14px;
+  }
+
+  /*
+    Area scan hampir full layar.
+  */
+
+  .scan-box {
+    width: 97%;
+
+    height: 96%;
+  }
+
+  .corner {
+    width: 38px;
+    height: 38px;
+
+    border-width: 3px;
+  }
+
+  .scan-line {
+    left: 2%;
+    right: 2%;
+  }
+
+  @keyframes scan {
+    0%,
+    100% {
+      transform: translateY(-170px);
+
+      opacity: 0.25;
+    }
+
+    50% {
+      transform: translateY(170px);
+
+      opacity: 1;
+    }
+  }
+
+  .scan-target {
+    bottom: 12px;
+
+    max-width: 90%;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+  }
+
+  .actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================
+   VERY SMALL PHONE
+===================================================== */
+
+@media (max-width: 380px) {
+  .app {
+    padding: 8px 6px;
+  }
+
+  .video-wrap {
+    min-height: 390px;
+    height: 68vh;
+  }
+  .scan-box {
+    width: 97%;
+
+    height: 95%;
+  }
+
+  .corner {
+    width: 32px;
+    height: 32px;
+  }
+
+  .scan-target {
+    font-size: 10px;
+  }
+
+  .scan-target span {
+    font-size: 10px;
+  }
+
+  .result-head h2 {
+    font-size: 21px;
+  }
+}
