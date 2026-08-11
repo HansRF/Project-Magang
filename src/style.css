@@ -2,7 +2,16 @@
   box-sizing: border-box;
 }
 
-:root {
+html {
+  background: #020617;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+
   font-family:
     Inter,
     ui-sans-serif,
@@ -18,19 +27,17 @@
   font-synthesis: none;
 }
 
-html {
-  background: #020617;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: #020617;
-}
-
 button {
   font: inherit;
+  border: 0;
+  cursor: pointer;
+
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 button:disabled {
@@ -43,12 +50,13 @@ button:disabled {
 ===================================================== */
 
 .app {
+  width: 100%;
   min-height: 100vh;
 
-  padding: 24px 16px;
+  padding: 24px 16px 30px;
 
   background:
-    radial-gradient(circle at top, rgba(30, 64, 175, 0.2), transparent 35%),
+    radial-gradient(circle at top, rgba(37, 99, 235, 0.18), transparent 38%),
     #020617;
 }
 
@@ -74,22 +82,23 @@ button:disabled {
   width: 48px;
   height: 48px;
 
+  flex: 0 0 auto;
+
   display: grid;
   place-items: center;
 
-  flex: 0 0 auto;
-
   border-radius: 14px;
 
-  color: white;
-
+  color: #ffffff;
   background: #2563eb;
 
   box-shadow: 0 12px 35px rgba(37, 99, 235, 0.28);
 }
 
-h1 {
+.header h1 {
   margin: 0;
+
+  color: #f8fafc;
 
   font-size: 22px;
   line-height: 1.2;
@@ -104,17 +113,19 @@ h1 {
 }
 
 /* =====================================================
-   CARDS
+   CARD
 ===================================================== */
 
 .scanner-card,
 .result-card,
 .alert {
+  width: 100%;
+
   border: 1px solid #1e293b;
 
-  background: rgba(15, 23, 42, 0.88);
+  border-radius: 20px;
 
-  border-radius: 22px;
+  background: rgba(15, 23, 42, 0.9);
 
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22);
 }
@@ -130,29 +141,26 @@ h1 {
 .video-wrap {
   position: relative;
 
-  /*
-    Diperbesar supaya tape bisa
-    diarahkan dari jarak lebih jauh.
-  */
+  width: 100%;
 
-  height: min(75vh, 600px);
+  height: min(68vh, 580px);
 
   min-height: 360px;
 
   overflow: hidden;
 
-  border-radius: 16px;
+  border-radius: 15px;
 
   background: #000;
 }
 
 .video {
+  display: block;
+
   width: 100%;
   height: 100%;
 
   object-fit: cover;
-
-  display: block;
 }
 
 .camera-placeholder {
@@ -161,14 +169,14 @@ h1 {
   inset: 0;
 
   display: flex;
-
   flex-direction: column;
 
+  align-items: center;
   justify-content: center;
 
-  align-items: center;
-
   gap: 8px;
+
+  padding: 20px;
 
   color: #64748b;
 
@@ -184,9 +192,9 @@ h1 {
 }
 
 .camera-placeholder span {
-  font-size: 13px;
-
   color: #64748b;
+
+  font-size: 13px;
 }
 
 /* =====================================================
@@ -199,53 +207,35 @@ h1 {
   inset: 0;
 
   display: grid;
-
   place-items: center;
 
   pointer-events: none;
 
-  /*
-    Sangat transparan agar kamera
-    tetap terang.
-  */
-
   background: rgba(2, 6, 23, 0.02);
 }
-
-/* =====================================================
-   SCAN BOX SUPER BESAR
-===================================================== */
 
 .scan-box {
   position: relative;
 
-  /*
-    Hampir seluruh layar kamera.
-  */
+  width: 94%;
+  height: 90%;
 
-  width: 96%;
+  border: 1px solid rgba(96, 165, 250, 0.18);
 
-  height: 94%;
-
-  max-width: none;
-
-  border-radius: 18px;
-
-  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 17px;
 }
 
 /* =====================================================
-   CORNERS
+   SCAN CORNERS
 ===================================================== */
 
 .corner {
   position: absolute;
 
-  width: 48px;
-  height: 48px;
+  width: 46px;
+  height: 46px;
 
   border-color: #60a5fa;
-
   border-style: solid;
 
   filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.7))
@@ -280,8 +270,8 @@ h1 {
 }
 
 .br {
-  bottom: 0;
   right: 0;
+  bottom: 0;
 
   border-width: 0 4px 4px 0;
 
@@ -314,76 +304,66 @@ h1 {
 @keyframes scan {
   0%,
   100% {
-    transform: translateY(-250px);
-
+    transform: translateY(-230px);
     opacity: 0.25;
   }
 
   50% {
-    transform: translateY(250px);
-
+    transform: translateY(230px);
     opacity: 1;
   }
 }
 
 /* =====================================================
-   SCAN TARGET
+   SCAN PROGRESS
 ===================================================== */
 
-.scan-target {
+.scan-progress {
   position: absolute;
 
   left: 50%;
-
-  bottom: 18px;
+  bottom: 14px;
 
   transform: translateX(-50%);
 
   display: flex;
-
   align-items: center;
 
-  justify-content: center;
-
-  gap: 8px;
+  gap: 9px;
 
   padding: 9px 14px;
 
   border: 1px solid rgba(96, 165, 250, 0.4);
 
-  border-radius: 10px;
+  border-radius: 13px;
 
-  background: rgba(2, 6, 23, 0.72);
+  background: rgba(2, 6, 23, 0.78);
 
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 
   white-space: nowrap;
 }
 
-.scan-target span {
+.scan-progress strong {
+  color: #60a5fa;
+
+  font-size: 21px;
+
+  line-height: 1;
+}
+
+.scan-progress strong span {
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.scan-progress small {
   color: #cbd5e1;
 
   font-size: 11px;
 
-  font-weight: 700;
-}
-
-/* =====================================================
-   LOADING
-===================================================== */
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
+  font-weight: 600;
 }
 
 /* =====================================================
@@ -397,15 +377,15 @@ h1 {
 
   color: #94a3b8;
 
-  text-align: center;
-
   font-size: 13px;
 
   line-height: 1.5;
+
+  text-align: center;
 }
 
 /* =====================================================
-   ACTIONS
+   ACTION BUTTONS
 ===================================================== */
 
 .actions {
@@ -416,26 +396,18 @@ h1 {
   gap: 10px;
 }
 
-button {
-  border: 0;
-
-  cursor: pointer;
-}
-
 .primary,
 .secondary,
 .danger {
-  min-height: 48px;
-
-  border-radius: 13px;
+  min-height: 50px;
 
   display: flex;
-
   align-items: center;
-
   justify-content: center;
 
   gap: 8px;
+
+  border-radius: 13px;
 
   font-weight: 700;
 
@@ -446,16 +418,14 @@ button {
 
 .primary:hover,
 .secondary:hover,
-.danger:hover,
-.reset:hover,
-.icon-btn:hover {
-  transform: translateY(-1px);
-
+.danger:hover {
   opacity: 0.92;
+
+  transform: translateY(-1px);
 }
 
 .primary {
-  color: white;
+  color: #ffffff;
 
   background: #2563eb;
 }
@@ -469,7 +439,7 @@ button {
 }
 
 .danger {
-  color: white;
+  color: #ffffff;
 
   background: #dc2626;
 }
@@ -480,10 +450,9 @@ button {
 
 .alert {
   display: flex;
+  align-items: flex-start;
 
   gap: 10px;
-
-  align-items: flex-start;
 
   margin-top: 12px;
 
@@ -507,29 +476,28 @@ button {
 }
 
 /* =====================================================
-   RESULT
+   RESULT CARD
 ===================================================== */
 
 .result-card {
   margin-top: 12px;
 
-  padding: 18px;
+  padding: 17px;
 }
 
 .result-head {
   display: flex;
 
+  align-items: center;
   justify-content: space-between;
 
-  align-items: center;
-
-  gap: 15px;
+  gap: 12px;
 }
 
 .result-head small {
   color: #64748b;
 
-  font-size: 11px;
+  font-size: 10px;
 
   font-weight: 800;
 
@@ -537,40 +505,159 @@ button {
 }
 
 .result-head h2 {
-  margin: 7px 0 0;
-
-  min-height: 29px;
+  margin: 5px 0 0;
 
   color: #f8fafc;
 
   font-size: 24px;
 
-  word-break: break-all;
-
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 /* =====================================================
-   COPY BUTTON
+   EMPTY RESULT
 ===================================================== */
 
-.icon-btn {
-  width: 44px;
-  height: 44px;
+.empty-result {
+  min-height: 100px;
+
+  margin-top: 15px;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  border: 1px dashed #334155;
+
+  border-radius: 13px;
+
+  color: #64748b;
+
+  font-size: 13px;
+
+  text-align: center;
+}
+
+/* =====================================================
+   RESULT LIST
+===================================================== */
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+
+  margin-top: 15px;
+}
+
+.barcode-item {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 10px;
+
+  border: 1px solid #1e293b;
+
+  border-radius: 13px;
+
+  background: #0b1220;
+}
+
+.barcode-number {
+  width: 32px;
+  height: 32px;
 
   flex: 0 0 auto;
 
   display: grid;
-
   place-items: center;
+
+  border-radius: 9px;
+
+  color: #dbeafe;
+
+  background: #1d4ed8;
+
+  font-size: 13px;
+
+  font-weight: 800;
+}
+
+.barcode-content {
+  min-width: 0;
+
+  flex: 1;
+}
+
+.barcode-text {
+  overflow-wrap: anywhere;
+
+  color: #f8fafc;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  line-height: 1.35;
+}
+
+.barcode-format {
+  margin-top: 3px;
+
+  color: #64748b;
+
+  font-size: 10px;
+
+  text-transform: uppercase;
+}
+
+.barcode-actions {
+  display: flex;
+
+  gap: 5px;
+
+  flex: 0 0 auto;
+}
+
+.small-btn {
+  width: 38px;
+  height: 38px;
+
+  flex: 0 0 auto;
+
+  display: grid;
+  place-items: center;
+
+  border: 1px solid #334155;
+
+  border-radius: 9px;
 
   color: #cbd5e1;
 
   background: #1e293b;
 
-  border: 1px solid #334155;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
 
-  border-radius: 12px;
+.small-btn:hover {
+  opacity: 0.9;
+
+  transform: translateY(-1px);
+}
+
+.small-btn.delete {
+  color: #fca5a5;
 }
 
 /* =====================================================
@@ -579,46 +666,31 @@ button {
 
 .result-success {
   display: flex;
+  align-items: flex-start;
 
-  align-items: center;
+  gap: 8px;
 
-  gap: 7px;
+  margin-top: 13px;
 
-  margin-top: 14px;
-
-  padding: 10px 12px;
-
-  color: #bbf7d0;
-
-  background: rgba(22, 101, 52, 0.2);
+  padding: 11px 12px;
 
   border: 1px solid rgba(34, 197, 94, 0.25);
 
   border-radius: 10px;
 
-  font-size: 13px;
+  color: #bbf7d0;
+
+  background: rgba(22, 101, 52, 0.2);
+
+  font-size: 12px;
 
   font-weight: 600;
+
+  line-height: 1.4;
 }
 
-/* =====================================================
-   FORMAT
-===================================================== */
-
-.format {
-  margin-top: 12px;
-
-  padding-top: 12px;
-
-  border-top: 1px solid #1e293b;
-
-  color: #94a3b8;
-
-  font-size: 13px;
-}
-
-.format strong {
-  color: #e2e8f0;
+.result-success svg {
+  flex: 0 0 auto;
 }
 
 /* =====================================================
@@ -628,21 +700,27 @@ button {
 .reset {
   width: 100%;
 
+  min-height: 46px;
+
   margin-top: 12px;
 
-  min-height: 44px;
-
   display: flex;
-
-  justify-content: center;
-
   align-items: center;
+  justify-content: center;
 
   gap: 7px;
 
   color: #94a3b8;
 
   background: transparent;
+
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.reset:hover {
+  opacity: 0.85;
 }
 
 /* =====================================================
@@ -651,12 +729,13 @@ button {
 
 footer {
   display: flex;
-
   justify-content: center;
 
   gap: 8px;
 
-  margin-top: 22px;
+  margin-top: 18px;
+
+  padding-bottom: 10px;
 
   color: #475569;
 
@@ -664,115 +743,240 @@ footer {
 }
 
 /* =====================================================
-   TABLET / MOBILE
+   MOBILE
 ===================================================== */
 
 @media (max-width: 520px) {
   .app {
-    padding: 10px 8px;
+    padding: max(8px, env(safe-area-inset-top)) 8px
+      max(14px, env(safe-area-inset-bottom));
   }
 
   .header {
-    margin-bottom: 13px;
+    margin: 3px 2px 12px;
+  }
+
+  .logo {
+    width: 43px;
+    height: 43px;
+
+    border-radius: 12px;
+  }
+
+  .header h1 {
+    font-size: 19px;
+  }
+
+  .header p {
+    margin-top: 3px;
+
+    font-size: 12px;
+  }
+
+  .scanner-card {
+    padding: 8px;
+
+    border-radius: 17px;
   }
 
   /*
-    Kamera lebih tinggi di HP.
+    Kamera dibuat tinggi tetapi
+    tidak memenuhi seluruh layar.
   */
 
   .video-wrap {
-    min-height: 420px;
+    height: 64vh;
 
-    height: 72vh;
+    min-height: 390px;
 
-    border-radius: 14px;
+    max-height: 620px;
+
+    border-radius: 13px;
   }
 
-  /*
-    Area scan hampir full layar.
-  */
-
   .scan-box {
-    width: 97%;
+    width: 96%;
 
-    height: 96%;
+    height: 91%;
   }
 
   .corner {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
 
     border-width: 3px;
-  }
-
-  .scan-line {
-    left: 2%;
-    right: 2%;
   }
 
   @keyframes scan {
     0%,
     100% {
-      transform: translateY(-170px);
+      transform: translateY(-160px);
 
       opacity: 0.25;
     }
 
     50% {
-      transform: translateY(170px);
+      transform: translateY(160px);
 
       opacity: 1;
     }
   }
 
-  .scan-target {
-    bottom: 12px;
+  .scan-progress {
+    bottom: 11px;
 
-    max-width: 90%;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
+    padding: 8px 12px;
   }
+
+  .scan-progress strong {
+    font-size: 19px;
+  }
+
+  .scan-progress small {
+    font-size: 10px;
+  }
+
+  /*
+    Tombol dibuat full-width
+    supaya mudah ditekan di HP.
+  */
 
   .actions {
     grid-template-columns: 1fr;
   }
+
+  .primary,
+  .secondary,
+  .danger {
+    min-height: 50px;
+  }
+
+  /*
+    Hasil scan
+  */
+
+  .result-card {
+    padding: 14px;
+  }
+
+  .result-head h2 {
+    font-size: 22px;
+  }
+
+  .barcode-item {
+    padding: 9px;
+
+    gap: 8px;
+  }
+
+  .barcode-number {
+    width: 30px;
+    height: 30px;
+  }
+
+  .barcode-text {
+    font-size: 13px;
+  }
+
+  .small-btn {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 /* =====================================================
-   VERY SMALL PHONE
+   SMALL PHONE
 ===================================================== */
 
 @media (max-width: 380px) {
   .app {
-    padding: 8px 6px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .header {
+    gap: 9px;
+  }
+
+  .logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .header h1 {
+    font-size: 18px;
+  }
+
+  .header p {
+    font-size: 11px;
   }
 
   .video-wrap {
-    min-height: 390px;
-    height: 68vh;
-  }
-  .scan-box {
-    width: 97%;
+    height: 62vh;
 
-    height: 95%;
+    min-height: 360px;
+  }
+
+  .scan-box {
+    width: 96%;
+    height: 90%;
   }
 
   .corner {
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
   }
 
-  .scan-target {
-    font-size: 10px;
+  .scan-progress {
+    padding: 7px 10px;
   }
 
-  .scan-target span {
-    font-size: 10px;
+  .scan-progress strong {
+    font-size: 18px;
   }
 
-  .result-head h2 {
-    font-size: 21px;
+  .scan-progress small {
+    font-size: 9px;
+  }
+
+  .barcode-item {
+    align-items: flex-start;
+  }
+
+  .barcode-actions {
+    flex-direction: column;
+  }
+
+  .small-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .result-success {
+    font-size: 11px;
+  }
+}
+
+/* =====================================================
+   LANDSCAPE PHONE
+===================================================== */
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .app {
+    padding: 8px;
+  }
+
+  .video-wrap {
+    height: 82vh;
+
+    min-height: 300px;
+  }
+
+  .scan-box {
+    height: 88%;
+  }
+
+  .actions {
+    grid-template-columns: 1fr 1fr;
   }
 }
