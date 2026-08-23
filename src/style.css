@@ -45,9 +45,9 @@ button:disabled {
   opacity: 0.6;
 }
 
-/* =====================================================
+/* 
    APP
-===================================================== */
+ */
 
 .app {
   width: 100%;
@@ -65,9 +65,9 @@ button:disabled {
   margin: 0 auto;
 }
 
-/* =====================================================
+/* 
    HEADER
-===================================================== */
+ */
 
 .header {
   display: flex;
@@ -112,9 +112,9 @@ button:disabled {
   font-size: 13px;
 }
 
-/* =====================================================
+/* 
    CARD
-===================================================== */
+ */
 
 .scanner-card,
 .result-card,
@@ -134,9 +134,9 @@ button:disabled {
   padding: 12px;
 }
 
-/* =====================================================
+/* 
    CAMERA
-===================================================== */
+ */
 
 .video-wrap {
   position: relative;
@@ -197,9 +197,9 @@ button:disabled {
   font-size: 13px;
 }
 
-/* =====================================================
+/* 
    SCAN OVERLAY
-===================================================== */
+ */
 
 .scan-overlay {
   position: absolute;
@@ -225,9 +225,9 @@ button:disabled {
   border-radius: 17px;
 }
 
-/* =====================================================
+/* 
    SCAN CORNERS
-===================================================== */
+ */
 
 .corner {
   position: absolute;
@@ -278,9 +278,9 @@ button:disabled {
   border-radius: 0 0 14px 0;
 }
 
-/* =====================================================
+/* 
    SCAN LINE
-===================================================== */
+ */
 
 .scan-line {
   position: absolute;
@@ -314,9 +314,9 @@ button:disabled {
   }
 }
 
-/* =====================================================
+/* 
    SCAN PROGRESS
-===================================================== */
+ */
 
 .scan-progress {
   position: absolute;
@@ -366,9 +366,9 @@ button:disabled {
   font-weight: 600;
 }
 
-/* =====================================================
+/* 
    STATUS
-===================================================== */
+ */
 
 .status {
   min-height: 21px;
@@ -384,9 +384,9 @@ button:disabled {
   text-align: center;
 }
 
-/* =====================================================
+/* 
    ACTION BUTTONS
-===================================================== */
+ */
 
 .actions {
   display: grid;
@@ -444,9 +444,9 @@ button:disabled {
   background: #dc2626;
 }
 
-/* =====================================================
+/* 
    ALERT
-===================================================== */
+ */
 
 .alert {
   display: flex;
@@ -475,9 +475,9 @@ button:disabled {
   margin-top: 1px;
 }
 
-/* =====================================================
+/* 
    RESULT CARD
-===================================================== */
+ */
 
 .result-card {
   margin-top: 12px;
@@ -514,9 +514,9 @@ button:disabled {
   line-height: 1.2;
 }
 
-/* =====================================================
+/* 
    EMPTY RESULT
-===================================================== */
+ */
 
 .empty-result {
   min-height: 100px;
@@ -542,9 +542,9 @@ button:disabled {
   text-align: center;
 }
 
-/* =====================================================
+/* 
    RESULT LIST
-===================================================== */
+ */
 
 .result-list {
   display: flex;
@@ -660,9 +660,9 @@ button:disabled {
   color: #fca5a5;
 }
 
-/* =====================================================
+/* 
    SUCCESS
-===================================================== */
+ */
 
 .result-success {
   display: flex;
@@ -693,9 +693,9 @@ button:disabled {
   flex: 0 0 auto;
 }
 
-/* =====================================================
+/* 
    RESET
-===================================================== */
+ */
 
 .reset {
   width: 100%;
@@ -723,128 +723,79 @@ button:disabled {
   opacity: 0.85;
 }
 
-/* =====================================================
-   FOOTER
-===================================================== */
-
+/* FOOTER*/
 footer {
   display: flex;
   justify-content: center;
-
   gap: 8px;
-
   margin-top: 18px;
-
   padding-bottom: 10px;
-
   color: #475569;
-
   font-size: 11px;
 }
-
-/* =====================================================
-   MOBILE
-===================================================== */
-
 @media (max-width: 520px) {
   .app {
     padding: max(8px, env(safe-area-inset-top)) 8px
       max(14px, env(safe-area-inset-bottom));
   }
-
   .header {
     margin: 3px 2px 12px;
   }
-
   .logo {
     width: 43px;
     height: 43px;
-
     border-radius: 12px;
   }
-
   .header h1 {
     font-size: 19px;
   }
-
   .header p {
     margin-top: 3px;
-
     font-size: 12px;
   }
-
   .scanner-card {
     padding: 8px;
-
     border-radius: 17px;
   }
-
-  /*
-    Kamera dibuat tinggi tetapi
-    tidak memenuhi seluruh layar.
-  */
-
   .video-wrap {
     height: 64vh;
-
     min-height: 390px;
-
     max-height: 620px;
-
     border-radius: 13px;
   }
-
   .scan-box {
     width: 96%;
-
     height: 91%;
   }
-
   .corner {
     width: 36px;
     height: 36px;
-
     border-width: 3px;
   }
-
   @keyframes scan {
     0%,
     100% {
       transform: translateY(-160px);
-
       opacity: 0.25;
     }
-
     50% {
       transform: translateY(160px);
-
       opacity: 1;
     }
   }
-
   .scan-progress {
     bottom: 11px;
-
     padding: 8px 12px;
   }
-
   .scan-progress strong {
     font-size: 19px;
   }
-
   .scan-progress small {
     font-size: 10px;
   }
-
-  /*
-    Tombol dibuat full-width
-    supaya mudah ditekan di HP.
-  */
-
   .actions {
     grid-template-columns: 1fr;
   }
-
   .primary,
   .secondary,
   .danger {
@@ -884,9 +835,9 @@ footer {
   }
 }
 
-/* =====================================================
+/* 
    SMALL PHONE
-===================================================== */
+ */
 
 @media (max-width: 380px) {
   .app {
@@ -957,9 +908,9 @@ footer {
   }
 }
 
-/* =====================================================
+/* 
    LANDSCAPE PHONE
-===================================================== */
+ */
 
 @media (max-width: 900px) and (orientation: landscape) {
   .app {
