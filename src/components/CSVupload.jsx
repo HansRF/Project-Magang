@@ -1,15 +1,7 @@
-import {
-  CheckCircle2,
-  FileSpreadsheet,
-} from "lucide-react";
+import React from "react";
+import { CheckCircle2, FileSpreadsheet } from "lucide-react";
 
-function CSVUpload({
-  csvRef,
-  csvLoaded,
-  csvFileName,
-  csvData,
-  onUpload,
-}) {
+function CSVUpload({ csvRef, csvLoaded, csvFileName, csvData, onUpload }) {
   return (
     <section className="csv-card">
       <div className="csv-header">
@@ -19,9 +11,8 @@ function CSVUpload({
 
         <div>
           <strong>Data Pencarian Tape</strong>
-
           <span>
-            Upload CSV berisi daftar tape yang ingin dicari
+            Upload CSV atau Excel berisi daftar tape yang ingin dicari
           </span>
         </div>
       </div>
@@ -29,7 +20,7 @@ function CSVUpload({
       <input
         ref={csvRef}
         type="file"
-        accept=".csv,text/csv"
+        accept=".csv,.xlsx,.xls"
         hidden
         onChange={(event) => {
           const file = event.target?.files?.[0];
@@ -41,14 +32,13 @@ function CSVUpload({
       />
 
       <button
+        type="button"
         className="csv-upload-btn"
         onClick={() => csvRef.current?.click()}
       >
         <FileSpreadsheet size={19} />
 
-        {csvLoaded
-          ? "Ganti Data CSV"
-          : "Upload Data CSV"}
+        {csvLoaded ? "Ganti Data" : "Upload Data CSV / Excel"}
       </button>
 
       {csvLoaded && (

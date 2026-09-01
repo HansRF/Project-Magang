@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 
-import { findTapeInCSV, normalizeCode, parseTapeCSV } from "./utils/csv";
+import { findTapeInCSV, normalizeCode, parseTapeFile } from "./utils/csv";
 
 import {
   createScanner,
@@ -9,54 +9,99 @@ import {
   scanImageFile,
 } from "./utils/scanner";
 
+import { Database, ScanLine, CheckCircle2, Search } from "lucide-react";
+
 import Header from "./components/Header";
-import CSVUpload from "./components/CSVUpload";
+import CSVUpload from "./components/CSVupload";
 import Scanner from "./components/Scanner";
 import ErrorAlert from "./components/ErrorAlert";
-import SearchSummary from "./components/SearchSummary";
 import ResultCard from "./components/ResultCard";
 import Footer from "./components/Footer";
 
 const MAX_BARCODES = 5;
 
 function App() {
+  // =========================================================
   // REFS
+  // =========================================================
+
   const videoRef = useRef(null);
   const fileRef = useRef(null);
   const csvRef = useRef(null);
   const readerRef = useRef(null);
   const controlsRef = useRef(null);
 
+  // =========================================================
   // CAMERA STATE
+  // =========================================================
+
   const [scanning, setScanning] = useState(false);
   const [processingImage, setProcessingImage] = useState(false);
 
+  // =========================================================
   // RESULT STATE
+  // =========================================================
+
   const [results, setResults] = useState([]);
   const [copiedIndex, setCopiedIndex] = useState(null);
 
+  // =========================================================
   // STATUS
+  // =========================================================
+
   const [message, setMessage] = useState(
     "Upload data CSV terlebih dahulu, lalu mulai scan.",
   );
 
   const [error, setError] = useState("");
 
+  // =========================================================
   // CSV STATE
+  // =========================================================
+
   const [csvData, setCsvData] = useState([]);
   const [csvLoaded, setCsvLoaded] = useState(false);
   const [csvFileName, setCsvFileName] = useState("");
   const [matchedCount, setMatchedCount] = useState(0);
 
-  // STOP CAMERA
+  // =========================================================
+  // STOP SCANNER
+  // =========================================================
+
   const stopScanner = () => {
     try {
-      controlsRef.current?.stop();
-    } catch (_) {}
+      if (controlsRef.current) {
+        controlsRef.current.stop();
+      }
+    } catch (err) {
+      console.warn("Gagal stop controls:", err);
+    }
 
     try {
-      readerRef.current?.reset();
-    } catch (_) {}
+      if (readerRef.current) {
+        readerRef.current.reset();
+      }
+    } catch (err) {
+      console.warn("Gagal reset reader:", err);
+    }
+
+    try {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject;
+
+        stream.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch (err) {
+            console.warn("Gagal menghentikan track:", err);
+          }
+        });
+
+        videoRef.current.srcObject = null;
+      }
+    } catch (err) {
+      console.warn("Gagal membersihkan video stream:", err);
+    }
 
     controlsRef.current = null;
     readerRef.current = null;
@@ -64,8 +109,11 @@ function App() {
     setScanning(false);
   };
 
+  // =========================================================
   // HANDLE BARCODE
-  const handleDecode = (res, err) => {
+  // =========================================================
+
+  const handleDecode = (res) => {
     if (!res) {
       return;
     }
@@ -80,6 +128,7 @@ function App() {
     const normalized = normalizeCode(text);
 
     setResults((previousResults) => {
+      // Jangan masukkan barcode yang sama
       const alreadyExists = previousResults.some(
         (item) => normalizeCode(item.text) === normalized,
       );
@@ -88,15 +137,17 @@ function App() {
         return previousResults;
       }
 
+      // Maksimal 5
       if (previousResults.length >= MAX_BARCODES) {
         return previousResults;
       }
 
+      // Cari di CSV / Excel
       const matchedTape = findTapeInCSV(csvData, text);
 
       const newItem = {
-        text: text,
-        format: format,
+        text,
+        format,
         found: Boolean(matchedTape),
         csvData: matchedTape,
         scannedAt: new Date().toLocaleTimeString("id-ID"),
@@ -104,9 +155,9 @@ function App() {
 
       const updatedResults = [...previousResults, newItem];
 
+      // Status
       if (matchedTape) {
         setMessage(`✅ TAPE DISK DITEMUKAN — ${text}`);
-
         setError("");
 
         setMatchedCount((previous) => previous + 1);
@@ -118,6 +169,7 @@ function App() {
         );
       }
 
+      // Kalau sudah 5
       if (updatedResults.length >= MAX_BARCODES) {
         setTimeout(() => {
           stopScanner();
@@ -134,15 +186,22 @@ function App() {
     });
   };
 
+  // =========================================================
   // START CAMERA
+  // =========================================================
+
   const startScanner = async () => {
-    if (scanning) return;
+    if (scanning) {
+      return;
+    }
 
     if (results.length >= MAX_BARCODES) {
       setMessage("5 tape sudah selesai dipindai. Tekan Scan Lagi.");
-
       return;
     }
+
+    // Pastikan scanner sebelumnya benar-benar mati
+    stopScanner();
 
     setError("");
 
@@ -159,27 +218,26 @@ function App() {
 
       readerRef.current = reader;
 
+      if (!videoRef.current) {
+        throw new Error("Video element tidak ditemukan.");
+      }
+
       const controls = await reader.decodeFromConstraints(
         {
           audio: false,
-
           video: {
             facingMode: {
               ideal: "environment",
             },
-
             width: {
               ideal: 1920,
             },
-
             height: {
               ideal: 1080,
             },
           },
         },
-
         videoRef.current,
-
         handleDecode,
       );
 
@@ -193,6 +251,23 @@ function App() {
     } catch (e) {
       console.error("Camera error:", e);
 
+      try {
+        if (videoRef.current?.srcObject) {
+          videoRef.current.srcObject
+            .getTracks()
+            .forEach((track) => track.stop());
+
+          videoRef.current.srcObject = null;
+        }
+      } catch (_) {}
+
+      try {
+        readerRef.current?.reset();
+      } catch (_) {}
+
+      controlsRef.current = null;
+      readerRef.current = null;
+
       setScanning(false);
 
       setError(
@@ -203,100 +278,119 @@ function App() {
     }
   };
 
-  // UPLOAD CSV
-  const handleCSVUpload = (file) => {
-    if (!file) return;
+  // =========================================================
+  // UPLOAD CSV / XLSX / XLS
+  // =========================================================
 
-    setError("");
-
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setError("File harus berformat CSV.");
-
+  const handleCSVUpload = async (file) => {
+    if (!file) {
       return;
     }
 
-    setMessage("Sedang membaca data CSV...");
+    // Matikan kamera kalau sedang aktif
+    if (scanning) {
+      stopScanner();
+    }
 
-    const reader = new FileReader();
+    setError("");
 
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result;
+    const extension = file.name.split(".").pop().toLowerCase();
 
-        if (!text) {
-          throw new Error("CSV kosong.");
-        }
+    const allowedExtensions = ["csv", "xlsx", "xls"];
 
-        const parsedData = parseTapeCSV(text);
+    if (!allowedExtensions.includes(extension)) {
+      setError("File harus berformat CSV, XLSX, atau XLS.");
+      return;
+    }
 
-        setCsvData(parsedData);
-        setCsvLoaded(true);
-        setCsvFileName(file.name);
-        setMatchedCount(0);
+    setMessage("Sedang membaca data...");
 
-        setResults([]);
+    try {
+      const parsedData = await parseTapeFile(file);
 
-        setMessage(`${parsedData.length} data tape berhasil dimuat.`);
-
-        setError("");
-
-        if (csvRef.current) {
-          csvRef.current.value = "";
-        }
-
-        console.log("DATA CSV BERHASIL DIMUAT:");
-
-        console.table(parsedData);
-      } catch (err) {
-        console.error("CSV error:", err);
-
-        setCsvData([]);
-        setCsvLoaded(false);
-        setCsvFileName("");
-        setMatchedCount(0);
-
-        setError("CSV tidak dapat dibaca. Pastikan format CSV benar.");
-
-        setMessage("Gagal membaca CSV.");
+      if (!parsedData.length) {
+        throw new Error("File tidak memiliki data tape.");
       }
-    };
 
-    reader.onerror = () => {
-      setError("File CSV tidak dapat dibaca.");
+      setCsvData(parsedData);
+      setCsvLoaded(true);
+      setCsvFileName(file.name);
 
-      setMessage("Gagal membaca CSV.");
-    };
+      // Reset hasil scan karena data baru
+      setResults([]);
+      setMatchedCount(0);
 
-    reader.readAsText(file);
+      setMessage(`${parsedData.length} data tape berhasil dimuat.`);
+      setError("");
+
+      if (csvRef.current) {
+        csvRef.current.value = "";
+      }
+
+      console.log(`DATA ${extension.toUpperCase()} BERHASIL DIMUAT`);
+      console.table(parsedData);
+    } catch (err) {
+      console.error("File data error:", err);
+
+      setCsvData([]);
+      setCsvLoaded(false);
+      setCsvFileName("");
+      setMatchedCount(0);
+      setResults([]);
+
+      setError(
+        `File ${extension.toUpperCase()} tidak dapat dibaca. Pastikan format dan isi file benar.`,
+      );
+
+      setMessage(`Gagal membaca ${extension.toUpperCase()}.`);
+    }
   };
 
+  // =========================================================
   // SCAN FOTO
+  // =========================================================
+
   const scanImage = async (file) => {
-    if (!file) return;
+    if (!file) {
+      return;
+    }
+
+    // Matikan kamera sebelum scan foto
+    stopScanner();
 
     setError("");
     setProcessingImage(true);
-
     setMessage("Menganalisis foto...");
 
     try {
       const res = await scanImageFile(file);
 
+      if (!res) {
+        throw new Error("Barcode tidak ditemukan.");
+      }
+
       const text = getBarcodeText(res);
+
+      if (!text) {
+        throw new Error("Barcode tidak memiliki teks.");
+      }
 
       const format = getBarcodeFormat(res);
 
       const matchedTape = findTapeInCSV(csvData, text);
 
       setResults((previousResults) => {
+        // Cek duplikat
         const alreadyExists = previousResults.some(
           (item) => normalizeCode(item.text) === normalizeCode(text),
         );
 
         if (alreadyExists) {
+          setMessage(`Barcode ${text} sudah ada di hasil scan.`);
           return previousResults;
         }
 
+        // Maksimal 5
         if (previousResults.length >= MAX_BARCODES) {
           return previousResults;
         }
@@ -315,6 +409,8 @@ function App() {
           setMatchedCount((previous) => previous + 1);
 
           setMessage(`✅ TAPE DISK DITEMUKAN — ${text}`);
+
+          setError("");
         } else {
           setMessage(
             csvLoaded
@@ -335,16 +431,21 @@ function App() {
       setMessage("Barcode tidak ditemukan.");
     } finally {
       setProcessingImage(false);
-    }
 
-    if (fileRef.current) {
-      fileRef.current.value = "";
+      if (fileRef.current) {
+        fileRef.current.value = "";
+      }
     }
   };
 
-  // COPY
+  // =========================================================
+  // COPY RESULT
+  // =========================================================
+
   const copyResult = async (text, index) => {
-    if (!text) return;
+    if (!text) {
+      return;
+    }
 
     try {
       await navigator.clipboard.writeText(text);
@@ -359,7 +460,10 @@ function App() {
     }
   };
 
+  // =========================================================
   // DELETE RESULT
+  // =========================================================
+
   const deleteResult = (index) => {
     const item = results[index];
 
@@ -372,7 +476,10 @@ function App() {
     setMessage("Hasil scan dihapus.");
   };
 
-  // RESET SESSION
+  // =========================================================
+  // RESET
+  // =========================================================
+
   const reset = () => {
     stopScanner();
 
@@ -382,12 +489,15 @@ function App() {
 
     setMessage(
       csvLoaded
-        ? "Data CSV masih aktif. Tekan Buka Kamera untuk scan lagi."
+        ? "Data masih aktif. Tekan Buka Kamera untuk scan lagi."
         : "Upload data CSV terlebih dahulu.",
     );
   };
 
+  // =========================================================
   // CLEANUP
+  // =========================================================
+
   useEffect(() => {
     return () => {
       try {
@@ -397,14 +507,38 @@ function App() {
       try {
         readerRef.current?.reset();
       } catch (_) {}
+
+      try {
+        if (videoRef.current?.srcObject) {
+          const stream = videoRef.current.srcObject;
+
+          stream.getTracks().forEach((track) => {
+            try {
+              track.stop();
+            } catch (_) {}
+          });
+
+          videoRef.current.srcObject = null;
+        }
+      } catch (_) {}
+
+      controlsRef.current = null;
+      readerRef.current = null;
     };
   }, []);
 
+  // =========================================================
   // RENDER
+  // =========================================================
+
   return (
     <main className="app">
       <section className="shell">
         <Header />
+
+        {/* =====================================================
+            CSV / EXCEL UPLOAD
+        ===================================================== */}
 
         <CSVUpload
           csvRef={csvRef}
@@ -413,6 +547,10 @@ function App() {
           csvData={csvData}
           onUpload={handleCSVUpload}
         />
+
+        {/* =====================================================
+            SCANNER
+        ===================================================== */}
 
         <Scanner
           videoRef={videoRef}
@@ -428,15 +566,52 @@ function App() {
           onScanImage={scanImage}
         />
 
+        {/* =====================================================
+            ERROR
+        ===================================================== */}
+
         <ErrorAlert error={error} />
 
+        {/* =====================================================
+            SEARCH SUMMARY
+            DIBUAT LANGSUNG DI APP
+            TIDAK LAGI MEMAKAI SearchSummary.jsx
+        ===================================================== */}
+
         {csvLoaded && (
-          <SearchSummary
-            csvDataLength={csvData.length}
-            matchedCount={matchedCount}
-            resultsLength={results.length}
-          />
+          <section className="search-summary">
+            <div className="summary-item">
+              <Database size={20} />
+
+              <div>
+                <small>DATA TAPE</small>
+                <strong>{csvData.length}</strong>
+              </div>
+            </div>
+
+            <div className="summary-item">
+              <CheckCircle2 size={20} />
+
+              <div>
+                <small>DITEMUKAN</small>
+                <strong>{matchedCount}</strong>
+              </div>
+            </div>
+
+            <div className="summary-item">
+              <Search size={20} />
+
+              <div>
+                <small>DI-SCAN</small>
+                <strong>{results.length}</strong>
+              </div>
+            </div>
+          </section>
         )}
+
+        {/* =====================================================
+            HASIL SCAN
+        ===================================================== */}
 
         <ResultCard
           results={results}
@@ -445,6 +620,10 @@ function App() {
           onCopy={copyResult}
           onDelete={deleteResult}
         />
+
+        {/* =====================================================
+            RESET
+        ===================================================== */}
 
         <button className="reset" onClick={reset}>
           <span

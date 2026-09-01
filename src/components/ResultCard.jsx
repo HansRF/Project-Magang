@@ -1,3 +1,4 @@
+import React from "react";
 import ResultItem from "./ResultItem";
 
 function ResultCard({ results, copiedIndex, csvLoaded, onCopy, onDelete }) {

@@ -1,3 +1,4 @@
+import React from "react";
 import { ScanLine } from "lucide-react";
 
 function Header() {

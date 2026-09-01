@@ -1,3 +1,4 @@
+import React from "react";
 import { Camera, CameraOff, ImagePlus, ScanLine } from "lucide-react";
 
 function Scanner({
