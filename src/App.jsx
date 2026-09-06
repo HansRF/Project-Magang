@@ -18,7 +18,7 @@ import ErrorAlert from "./components/ErrorAlert";
 import ResultCard from "./components/ResultCard";
 import Footer from "./components/Footer";
 
-const MAX_BARCODES = 5;
+const MAX_BARCODES = 50;
 
 function App() {
   // =========================================================
@@ -189,8 +189,8 @@ function App() {
 
           setMessage(
             csvLoaded
-              ? "5 tape selesai dipindai. Cek hasil di bawah."
-              : "5 tape selesai dipindai.",
+              ? `${MAX_BARCODES} tape selesai dipindai. Cek hasil di bawah.`
+              : `${MAX_BARCODES} tape selesai dipindai.`,
           );
         }, 500);
       }
@@ -229,7 +229,7 @@ function App() {
     }
 
     if (results.length >= MAX_BARCODES) {
-      setMessage("5 tape sudah selesai dipindai. Tekan Scan Lagi.");
+      setMessage(`${MAX_BARCODES} tape sudah selesai dipindai. Tekan Scan Lagi.`);
       return;
     }
 
