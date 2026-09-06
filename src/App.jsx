@@ -9,7 +9,7 @@ import {
   scanImageFile,
 } from "./utils/scanner";
 
-import { Database, ScanLine, CheckCircle2, Search } from "lucide-react";
+import { Database, CheckCircle2, Search } from "lucide-react";
 
 import Header from "./components/Header";
 import CSVUpload from "./components/CSVupload";
@@ -56,12 +56,17 @@ function App() {
   const [error, setError] = useState("");
 
   // =========================================================
-  // CSV STATE
+  // CSV / EXCEL STATE
   // =========================================================
 
   const [csvData, setCsvData] = useState([]);
   const [csvLoaded, setCsvLoaded] = useState(false);
   const [csvFileName, setCsvFileName] = useState("");
+
+  // =========================================================
+  // MATCHED COUNT
+  // =========================================================
+
   const [matchedCount, setMatchedCount] = useState(0);
 
   // =========================================================
@@ -110,57 +115,62 @@ function App() {
   };
 
   // =========================================================
-  // HANDLE BARCODE
+  // ADD SCAN RESULT
   // =========================================================
 
-  const handleDecode = (res) => {
-    if (!res) {
-      return;
-    }
-
-    const text = getBarcodeText(res);
-
+  const addScanResult = (text, format) => {
     if (!text) {
       return;
     }
 
-    const format = getBarcodeFormat(res);
     const normalized = normalizeCode(text);
 
     setResults((previousResults) => {
-      // Jangan masukkan barcode yang sama
+      // -----------------------------------------------------
+      // CEK DUPLIKAT
+      // -----------------------------------------------------
+
       const alreadyExists = previousResults.some(
         (item) => normalizeCode(item.text) === normalized,
       );
 
       if (alreadyExists) {
+        setMessage(`Barcode ${text} sudah ada di hasil scan.`);
         return previousResults;
       }
 
-      // Maksimal 5
+      // -----------------------------------------------------
+      // BATAS MAKSIMAL
+      // -----------------------------------------------------
+
       if (previousResults.length >= MAX_BARCODES) {
         return previousResults;
       }
 
-      // Cari di CSV / Excel
+      // -----------------------------------------------------
+      // CARI DI DATA CSV / EXCEL
+      // -----------------------------------------------------
+
       const matchedTape = findTapeInCSV(csvData, text);
 
       const newItem = {
         text,
         format,
         found: Boolean(matchedTape),
-        csvData: matchedTape,
+        csvData: matchedTape || null,
         scannedAt: new Date().toLocaleTimeString("id-ID"),
       };
 
       const updatedResults = [...previousResults, newItem];
 
-      // Status
+      // -----------------------------------------------------
+      // STATUS
+      // -----------------------------------------------------
+
       if (matchedTape) {
+        setMatchedCount((previous) => previous + 1);
         setMessage(`✅ TAPE DISK DITEMUKAN — ${text}`);
         setError("");
-
-        setMatchedCount((previous) => previous + 1);
       } else {
         setMessage(
           csvLoaded
@@ -169,7 +179,10 @@ function App() {
         );
       }
 
-      // Kalau sudah 5
+      // -----------------------------------------------------
+      // JIKA SUDAH 5
+      // -----------------------------------------------------
+
       if (updatedResults.length >= MAX_BARCODES) {
         setTimeout(() => {
           stopScanner();
@@ -187,6 +200,26 @@ function App() {
   };
 
   // =========================================================
+  // HANDLE BARCODE CAMERA
+  // =========================================================
+
+  const handleDecode = (res) => {
+    if (!res) {
+      return;
+    }
+
+    const text = getBarcodeText(res);
+
+    if (!text) {
+      return;
+    }
+
+    const format = getBarcodeFormat(res);
+
+    addScanResult(text, format);
+  };
+
+  // =========================================================
   // START CAMERA
   // =========================================================
 
@@ -200,7 +233,6 @@ function App() {
       return;
     }
 
-    // Pastikan scanner sebelumnya benar-benar mati
     stopScanner();
 
     setError("");
@@ -225,19 +257,24 @@ function App() {
       const controls = await reader.decodeFromConstraints(
         {
           audio: false,
+
           video: {
             facingMode: {
               ideal: "environment",
             },
+
             width: {
               ideal: 1920,
             },
+
             height: {
               ideal: 1080,
             },
           },
         },
+
         videoRef.current,
+
         handleDecode,
       );
 
@@ -287,7 +324,6 @@ function App() {
       return;
     }
 
-    // Matikan kamera kalau sedang aktif
     if (scanning) {
       stopScanner();
     }
@@ -308,34 +344,73 @@ function App() {
     try {
       const parsedData = await parseTapeFile(file);
 
-      if (!parsedData.length) {
+      // -----------------------------------------------------
+      // VALIDASI DATA
+      // -----------------------------------------------------
+
+      if (!Array.isArray(parsedData)) {
+        throw new Error("Hasil pembacaan file bukan array.");
+      }
+
+      if (parsedData.length === 0) {
         throw new Error("File tidak memiliki data tape.");
       }
 
+      // -----------------------------------------------------
+      // SIMPAN DATA ASLI
+      // -----------------------------------------------------
+
       setCsvData(parsedData);
+
       setCsvLoaded(true);
+
       setCsvFileName(file.name);
 
-      // Reset hasil scan karena data baru
+      // -----------------------------------------------------
+      // RESET HASIL SCAN
+      // -----------------------------------------------------
+
       setResults([]);
+
       setMatchedCount(0);
 
+      // -----------------------------------------------------
+      // STATUS
+      // -----------------------------------------------------
+
       setMessage(`${parsedData.length} data tape berhasil dimuat.`);
+
       setError("");
 
+      // Reset input supaya file yang sama
+      // bisa dipilih lagi
       if (csvRef.current) {
         csvRef.current.value = "";
       }
 
-      console.log(`DATA ${extension.toUpperCase()} BERHASIL DIMUAT`);
+      // DEBUG
+      console.log("====================================");
+
+      console.log(`FILE: ${file.name}`);
+
+      console.log(`FORMAT: ${extension.toUpperCase()}`);
+
+      console.log("JUMLAH DATA:", parsedData.length);
+
       console.table(parsedData);
+
+      console.log("====================================");
     } catch (err) {
       console.error("File data error:", err);
 
       setCsvData([]);
+
       setCsvLoaded(false);
+
       setCsvFileName("");
+
       setMatchedCount(0);
+
       setResults([]);
 
       setError(
@@ -355,11 +430,12 @@ function App() {
       return;
     }
 
-    // Matikan kamera sebelum scan foto
     stopScanner();
 
     setError("");
+
     setProcessingImage(true);
+
     setMessage("Menganalisis foto...");
 
     try {
@@ -377,50 +453,7 @@ function App() {
 
       const format = getBarcodeFormat(res);
 
-      const matchedTape = findTapeInCSV(csvData, text);
-
-      setResults((previousResults) => {
-        // Cek duplikat
-        const alreadyExists = previousResults.some(
-          (item) => normalizeCode(item.text) === normalizeCode(text),
-        );
-
-        if (alreadyExists) {
-          setMessage(`Barcode ${text} sudah ada di hasil scan.`);
-          return previousResults;
-        }
-
-        // Maksimal 5
-        if (previousResults.length >= MAX_BARCODES) {
-          return previousResults;
-        }
-
-        const newItem = {
-          text,
-          format,
-          found: Boolean(matchedTape),
-          csvData: matchedTape,
-          scannedAt: new Date().toLocaleTimeString("id-ID"),
-        };
-
-        const updated = [...previousResults, newItem];
-
-        if (matchedTape) {
-          setMatchedCount((previous) => previous + 1);
-
-          setMessage(`✅ TAPE DISK DITEMUKAN — ${text}`);
-
-          setError("");
-        } else {
-          setMessage(
-            csvLoaded
-              ? `❌ TAPE TIDAK ADA DI DATA — ${text}`
-              : `Barcode terbaca — ${text}`,
-          );
-        }
-
-        return updated;
-      });
+      addScanResult(text, format);
     } catch (err) {
       console.error("Image scan error:", err);
 
@@ -484,7 +517,9 @@ function App() {
     stopScanner();
 
     setResults([]);
+
     setMatchedCount(0);
+
     setError("");
 
     setMessage(
@@ -536,9 +571,9 @@ function App() {
       <section className="shell">
         <Header />
 
-        {/* =====================================================
-            CSV / EXCEL UPLOAD
-        ===================================================== */}
+        {/* ================================================
+            UPLOAD DATA
+        ================================================= */}
 
         <CSVUpload
           csvRef={csvRef}
@@ -548,9 +583,9 @@ function App() {
           onUpload={handleCSVUpload}
         />
 
-        {/* =====================================================
+        {/* ================================================
             SCANNER
-        ===================================================== */}
+        ================================================= */}
 
         <Scanner
           videoRef={videoRef}
@@ -566,17 +601,15 @@ function App() {
           onScanImage={scanImage}
         />
 
-        {/* =====================================================
+        {/* ================================================
             ERROR
-        ===================================================== */}
+        ================================================= */}
 
         <ErrorAlert error={error} />
 
-        {/* =====================================================
-            SEARCH SUMMARY
-            DIBUAT LANGSUNG DI APP
-            TIDAK LAGI MEMAKAI SearchSummary.jsx
-        ===================================================== */}
+        {/* ================================================
+            SATU-SATUNYA SEARCH SUMMARY
+        ================================================= */}
 
         {csvLoaded && (
           <section className="search-summary">
@@ -585,6 +618,7 @@ function App() {
 
               <div>
                 <small>DATA TAPE</small>
+
                 <strong>{csvData.length}</strong>
               </div>
             </div>
@@ -594,6 +628,7 @@ function App() {
 
               <div>
                 <small>DITEMUKAN</small>
+
                 <strong>{matchedCount}</strong>
               </div>
             </div>
@@ -603,15 +638,16 @@ function App() {
 
               <div>
                 <small>DI-SCAN</small>
+
                 <strong>{results.length}</strong>
               </div>
             </div>
           </section>
         )}
 
-        {/* =====================================================
+        {/* ================================================
             HASIL SCAN
-        ===================================================== */}
+        ================================================= */}
 
         <ResultCard
           results={results}
@@ -621,9 +657,9 @@ function App() {
           onDelete={deleteResult}
         />
 
-        {/* =====================================================
+        {/* ================================================
             RESET
-        ===================================================== */}
+        ================================================= */}
 
         <button className="reset" onClick={reset}>
           <span
