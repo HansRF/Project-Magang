@@ -1,14 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase";
+
 import { findTapeInCSV, normalizeCode, parseTapeFile } from "./utils/csv";
+
 import {
   createScanner,
   getBarcodeFormat,
   getBarcodeText,
   scanImageFile,
 } from "./utils/scanner";
-import { getTapeLocation, validateTapesBeforeScan } from "./utils/FirebaseTape";
+
+import {
+  getTapeLocation,
+  validateTapesBeforeScan,
+  moveTapesToDestination,
+} from "./utils/FirebaseTape";
+
 import {
   Database,
   CheckCircle2,
@@ -17,6 +25,7 @@ import {
   MapPin,
   AlertTriangle,
   Check,
+  Loader2,
 } from "lucide-react";
 
 import Login from "./components/Login";
@@ -86,17 +95,33 @@ function App() {
   // =========================================================
   const [databaseChecking, setDatabaseChecking] = useState(false);
   const [databaseCheck, setDatabaseCheck] = useState(null);
+
+  // Tujuan dipilih SEBELUM scan
   const [destination, setDestination] = useState(null);
+
+  // Popup pilih tujuan
   const [validationModal, setValidationModal] = useState(false);
 
   // =========================================================
-  // AUTH LISTENER
+  // POPUP KONFIRMASI PINDAH
+  // =========================================================
+  const [completionModal, setCompletionModal] = useState(false);
+  const [movingData, setMovingData] = useState(false);
+
+  // =========================================================
+  // POPUP BERHASIL
+  // =========================================================
+  const [moveSuccess, setMoveSuccess] = useState(false);
+
+  // =========================================================
+  // CEK LOGIN
   // =========================================================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
@@ -106,19 +131,25 @@ function App() {
   const handleLogout = async () => {
     try {
       stopScanner();
+
       await signOut(auth);
+
       setResults([]);
       setCsvData([]);
       setCsvLoaded(false);
       setCsvFileName("");
       setMatchedCount(0);
       setError("");
+
       setMessage(
         "Upload data CSV atau Excel terlebih dahulu, lalu mulai scan.",
       );
+
       setDatabaseCheck(null);
       setDestination(null);
       setValidationModal(false);
+      setCompletionModal(false);
+      setMoveSuccess(false);
     } catch (err) {
       console.error("Logout error:", err);
       setError("Gagal logout. Silakan coba lagi.");
@@ -136,9 +167,11 @@ function App() {
     } catch (err) {
       console.warn("Gagal stop controls:", err);
     }
+
     try {
       if (videoRef.current?.srcObject) {
         const stream = videoRef.current.srcObject;
+
         stream.getTracks().forEach((track) => {
           try {
             track.stop();
@@ -146,11 +179,13 @@ function App() {
             console.warn("Gagal menghentikan track:", err);
           }
         });
+
         videoRef.current.srcObject = null;
       }
     } catch (err) {
       console.warn("Gagal membersihkan video stream:", err);
     }
+
     controlsRef.current = null;
     readerRef.current = null;
     setScanning(false);
@@ -163,18 +198,27 @@ function App() {
     if (!parsedData || parsedData.length === 0) {
       return;
     }
+
     setDatabaseChecking(true);
     setValidationModal(false);
+    setCompletionModal(false);
+    setMoveSuccess(false);
     setDestination(null);
     setDatabaseCheck(null);
+
     setMessage("Mengecek data Tape Disk ke database monitoring...");
+
     try {
       const validation = await validateTapesBeforeScan(parsedData);
+
       const pindo = validation.filter((item) => item.location === "PINDO");
+
       const dci = validation.filter((item) => item.location === "DCI");
+
       const notFound = validation.filter(
         (item) => item.location === "TIDAK_DITEMUKAN",
       );
+
       const checkResult = {
         total: validation.length,
         pindo,
@@ -182,20 +226,61 @@ function App() {
         notFound,
         all: validation,
       };
+
       setDatabaseCheck(checkResult);
+
+      // =====================================================
+      // POPUP PILIH TUJUAN TETAP MUNCUL SETELAH UPLOAD
+      // =====================================================
       setValidationModal(true);
+
       setMessage(
         `${validation.length} data selesai dicek dari database monitoring.`,
       );
     } catch (err) {
       console.error("Database validation error:", err);
+
       setError(
         "Gagal mengecek data Tape Disk dari Firebase. Pastikan Firestore Rules sudah benar.",
       );
+
       setMessage("Gagal mengecek database monitoring.");
     } finally {
       setDatabaseChecking(false);
     }
+  };
+
+  // =========================================================
+  // CEK APAKAH SEMUA DATA SUDAH DI-SCAN
+  // =========================================================
+  const checkAllTapesScanned = (currentResults = results) => {
+    if (!databaseCheck?.all || databaseCheck.all.length === 0) {
+      return false;
+    }
+
+    const requiredCodes = [
+      ...new Set(
+        databaseCheck.all
+          .map((item) => normalizeCode(item?.code || ""))
+          .filter(Boolean),
+      ),
+    ];
+
+    const scannedCodes = new Set(
+      currentResults
+        .filter(
+          (item) =>
+            item.found === true &&
+            (item.location === "PINDO" || item.location === "DCI"),
+        )
+        .map((item) => normalizeCode(item.text))
+        .filter(Boolean),
+    );
+
+    return (
+      requiredCodes.length > 0 &&
+      requiredCodes.every((code) => scannedCodes.has(code))
+    );
   };
 
   // =========================================================
@@ -205,20 +290,121 @@ function App() {
     if (!databaseCheck) {
       return;
     }
+
     setDestination(target);
+
     const wrongLocation =
       target === "DCI"
         ? [...databaseCheck.dci, ...databaseCheck.notFound]
         : [...databaseCheck.pindo, ...databaseCheck.notFound];
+
     if (wrongLocation.length > 0) {
       setMessage(
         `⚠️ Ada ${wrongLocation.length} Tape Disk yang tidak sesuai untuk dibawa ke ${target}.`,
       );
+
       return;
     }
+
     setMessage(
       `✅ Semua ${databaseCheck.total} Tape Disk sesuai untuk dibawa ke ${target}.`,
     );
+  };
+
+  // =========================================================
+  // BUKA POPUP KONFIRMASI SETELAH SEMUA SCAN SELESAI
+  // =========================================================
+  const openCompletionConfirmation = (currentResults) => {
+    if (!databaseCheck) {
+      return;
+    }
+
+    if (!destination) {
+      setError("Pilih lokasi tujuan terlebih dahulu sebelum melakukan scan.");
+
+      setMessage("⚠️ Pilih tujuan PINDO atau DCI terlebih dahulu.");
+
+      return;
+    }
+
+    const allScanned = checkAllTapesScanned(currentResults);
+
+    if (!allScanned) {
+      return;
+    }
+
+    // Scanner berhenti karena semua tape sudah ditemukan
+    stopScanner();
+
+    setError("");
+
+    setMessage(`✅ Semua ${databaseCheck.total} Tape Disk berhasil ditemukan.`);
+
+    // =====================================================
+    // POPUP KONFIRMASI PINDAH
+    // =====================================================
+    setCompletionModal(true);
+  };
+
+  // =========================================================
+  // KONFIRMASI PINDAH DATA
+  // =========================================================
+  const handleMoveData = async () => {
+    if (!databaseCheck) {
+      return;
+    }
+
+    if (!destination) {
+      setError("Lokasi tujuan belum dipilih.");
+      return;
+    }
+
+    if (!checkAllTapesScanned(results)) {
+      setError("Belum semua Tape Disk berhasil di-scan.");
+
+      setMessage(
+        "⚠️ Semua Tape Disk harus ditemukan melalui proses scan terlebih dahulu.",
+      );
+
+      return;
+    }
+
+    if (!databaseCheck.all || databaseCheck.all.length === 0) {
+      setError("Tidak ada data Tape Disk untuk dipindahkan.");
+
+      return;
+    }
+
+    setMovingData(true);
+    setError("");
+
+    try {
+      setMessage(
+        `Memindahkan ${databaseCheck.total} Tape Disk ke ${destination}...`,
+      );
+
+      await moveTapesToDestination(databaseCheck.all, destination);
+
+      // Tutup popup konfirmasi
+      setCompletionModal(false);
+
+      // Buka popup berhasil
+      setMoveSuccess(true);
+
+      setMessage(
+        `✅ ${databaseCheck.total} Tape Disk berhasil dipindahkan ke ${destination}.`,
+      );
+    } catch (err) {
+      console.error("Move Tape Disk error:", err);
+
+      setError(err?.message || "Gagal memindahkan data Tape Disk.");
+
+      setMessage(
+        "❌ Data gagal dipindahkan. Tidak ada perubahan yang berhasil diselesaikan pada proses ini.",
+      );
+    } finally {
+      setMovingData(false);
+    }
   };
 
   // =========================================================
@@ -228,28 +414,47 @@ function App() {
     if (!text) {
       return;
     }
+
     const normalized = normalizeCode(text);
+
+    // Cek duplicate
     const alreadyExists = results.some(
       (item) => normalizeCode(item.text) === normalized,
     );
+
     if (alreadyExists) {
       setMessage(`Barcode ${text} sudah ada di hasil scan.`);
+
       return;
     }
+
     if (results.length >= MAX_BARCODES) {
       setMessage(`${MAX_BARCODES} tape sudah selesai dipindai.`);
+
       return;
     }
+
     if (!csvLoaded || csvData.length === 0) {
       setError("Upload data CSV atau Excel terlebih dahulu.");
+
       setMessage("Data pencarian belum dimuat.");
+
       return;
     }
+
     setError("");
     setMessage(`Mengecek ${text}...`);
+
     try {
       const matchedTape = findTapeInCSV(csvData, text);
+
       const firebaseLocation = await getTapeLocation(text);
+
+      const successfullyFound =
+        Boolean(matchedTape) &&
+        (firebaseLocation.location === "PINDO" ||
+          firebaseLocation.location === "DCI");
+
       const newItem = {
         text,
         format,
@@ -259,44 +464,90 @@ function App() {
         firebaseData: firebaseLocation.data || null,
         scannedAt: new Date().toLocaleTimeString("id-ID"),
       };
+
+      // =====================================================
+      // MASUKKAN HASIL SCAN
+      // =====================================================
+      const nextResults = [...results, newItem];
+
       setResults((previousResults) => {
         const duplicate = previousResults.some(
           (item) => normalizeCode(item.text) === normalized,
         );
+
         if (duplicate) {
           return previousResults;
         }
+
         return [...previousResults, newItem];
       });
+
+      // =====================================================
+      // TIDAK ADA DI FILE PENCARIAN
+      // =====================================================
       if (!matchedTape) {
         setMessage(`❌ TAPE TIDAK ADA DI DAFTAR PENCARIAN — ${text}`);
 
         return;
       }
+
+      // =====================================================
+      // ADA DI FILE, TAPI TIDAK ADA DI FIREBASE
+      // =====================================================
+      if (!successfullyFound) {
+        setMessage(
+          `⚠️ ${text} ada di daftar pencarian, tetapi belum ada di database monitoring.`,
+        );
+
+        return;
+      }
+
+      // =====================================================
+      // BERHASIL DITEMUKAN
+      // =====================================================
       setMatchedCount((previous) => previous + 1);
+
       if (firebaseLocation.location === "PINDO") {
         setMessage(`✅ TAPE DISK DITEMUKAN ${text} LOKASI: PINDO`);
       } else if (firebaseLocation.location === "DCI") {
         setMessage(`✅ TAPE DISK DITEMUKAN ${text} LOKASI: DCI`);
-      } else {
-        setMessage(
-          `⚠️ ${text} ada di daftar pencarian, tetapi belum ada di database monitoring.`,
-        );
       }
-      setResults((currentResults) => {
-        if (currentResults.length >= MAX_BARCODES) {
-          setTimeout(() => {
-            stopScanner();
-            setMessage(
-              `${MAX_BARCODES} tape selesai dipindai. Cek hasil di bawah.`,
-            );
-          }, 500);
-        }
-        return currentResults;
-      });
+
+      // =====================================================
+      // CEK APAKAH SEMUA TAPE SUDAH DITEMUKAN
+      // =====================================================
+      const allScanned = checkAllTapesScanned(nextResults);
+
+      if (allScanned) {
+        // ===================================================
+        // JANGAN PINDAHKAN DATA OTOMATIS
+        //
+        // CUMA MUNCULKAN POPUP KONFIRMASI
+        // ===================================================
+        setTimeout(() => {
+          openCompletionConfirmation(nextResults);
+        }, 400);
+
+        return;
+      }
+
+      // =====================================================
+      // JIKA BELUM SEMUA, LANJUT SCAN
+      // =====================================================
+      if (nextResults.length >= MAX_BARCODES) {
+        setTimeout(() => {
+          stopScanner();
+
+          setMessage(
+            `${MAX_BARCODES} tape selesai dipindai. Cek hasil di bawah.`,
+          );
+        }, 500);
+      }
     } catch (err) {
       console.error("Scan Firebase error:", err);
+
       setError("Gagal mengecek lokasi Tape Disk dari Firebase.");
+
       setMessage("Terjadi kesalahan saat membaca database.");
     }
   };
@@ -308,11 +559,15 @@ function App() {
     if (!res) {
       return;
     }
+
     const text = getBarcodeText(res);
+
     if (!text) {
       return;
     }
+
     const format = getBarcodeFormat(res);
+
     addScanResult(text, format);
   };
 
@@ -323,30 +578,50 @@ function App() {
     if (scanning) {
       return;
     }
+
     if (!csvLoaded || csvData.length === 0) {
       setError(
         "Upload data CSV atau Excel terlebih dahulu sebelum melakukan scan.",
       );
+
       setMessage("Data pencarian belum dimuat.");
+
       return;
     }
+
+    if (!destination) {
+      setError("Pilih lokasi tujuan terlebih dahulu.");
+
+      setMessage("⚠️ Pilih tujuan PINDO atau DCI sebelum melakukan scan.");
+
+      setValidationModal(true);
+
+      return;
+    }
+
     if (results.length >= MAX_BARCODES) {
       setMessage(
         `${MAX_BARCODES} tape sudah selesai dipindai. Tekan Scan Lagi.`,
       );
+
       return;
     }
+
     stopScanner();
+
     setError("");
     setMessage("Meminta akses kamera...");
     setScanning(true);
 
     try {
       const reader = createScanner();
+
       readerRef.current = reader;
+
       if (!videoRef.current) {
         throw new Error("Video element tidak ditemukan.");
       }
+
       const controls = await reader.decodeFromConstraints(
         {
           audio: false,
@@ -365,12 +640,15 @@ function App() {
         videoRef.current,
         handleDecode,
       );
+
       controlsRef.current = controls;
+
       setMessage(
         `Kamera aktif — arahkan ke tape. ${results.length}/${MAX_BARCODES} terbaca.`,
       );
     } catch (e) {
       console.error("Camera error:", e);
+
       try {
         if (videoRef.current?.srcObject) {
           videoRef.current.srcObject
@@ -380,12 +658,16 @@ function App() {
           videoRef.current.srcObject = null;
         }
       } catch (_) {}
+
       controlsRef.current = null;
       readerRef.current = null;
+
       setScanning(false);
+
       setError(
         "Kamera tidak bisa digunakan. Pastikan izin kamera diberikan dan gunakan HTTPS atau localhost.",
       );
+
       setMessage("Gagal membuka kamera.");
     }
   };
@@ -397,68 +679,86 @@ function App() {
     if (!file) {
       return;
     }
+
     if (scanning) {
       stopScanner();
     }
+
     setError("");
+
     const extension = file.name.split(".").pop().toLowerCase();
+
     const allowedExtensions = ["csv", "xlsx", "xls"];
+
     if (!allowedExtensions.includes(extension)) {
       setError("File harus berformat CSV, XLSX, atau XLS.");
+
       return;
     }
+
     setMessage("Sedang membaca data...");
+
     try {
       const parsedData = await parseTapeFile(file);
+
       if (!Array.isArray(parsedData)) {
         throw new Error("Hasil pembacaan file bukan array.");
       }
+
       if (parsedData.length === 0) {
         throw new Error("File tidak memiliki data tape.");
       }
 
-      // =====================================================
-      // SIMPAN DATA PENCARIAN
-      // =====================================================
-      setCsvData(parsedData);
-      setCsvLoaded(true);
-      setCsvFileName(file.name);
-      setResults([]);
-      setMatchedCount(0);
-      setError("");
-      if (csvRef.current) {
-        csvRef.current.value = "";
+      if (parsedData.length > MAX_BARCODES) {
+        throw new Error(`Maksimal ${MAX_BARCODES} Tape Disk dalam satu file.`);
       }
+
+      // =====================================================
+      // RESET DATA LAMA
+      // =====================================================
       setCsvData(parsedData);
       setCsvLoaded(true);
       setCsvFileName(file.name);
+
       setResults([]);
       setMatchedCount(0);
-      setMessage(
-        `${parsedData.length} data tape berhasil dimuat. Siap untuk scan.`,
-      );
+
+      setDestination(null);
+      setCompletionModal(false);
+      setMoveSuccess(false);
+
       setError("");
+
       if (csvRef.current) {
         csvRef.current.value = "";
       }
 
+      setMessage(
+        `${parsedData.length} data tape berhasil dimuat. Sedang mengecek database...`,
+      );
+
       // =====================================================
-      // LANGSUNG CEK FIRESTORE
+      // CEK FIRESTORE
       // =====================================================
       await checkUploadedData(parsedData);
     } catch (err) {
       console.error("File data error:", err);
+
       setCsvData([]);
       setCsvLoaded(false);
       setCsvFileName("");
       setMatchedCount(0);
       setResults([]);
+
       setDatabaseCheck(null);
       setDestination(null);
       setValidationModal(false);
+      setCompletionModal(false);
+
       setError(
         `File ${extension.toUpperCase()} tidak dapat dibaca. Pastikan format dan isi file benar.`,
       );
+
       setMessage(`Gagal membaca ${extension.toUpperCase()}.`);
     }
   };
@@ -470,33 +770,55 @@ function App() {
     if (!file) {
       return;
     }
+
     if (!csvLoaded || csvData.length === 0) {
       setError("Upload data CSV atau Excel terlebih dahulu.");
+
       return;
     }
+
+    if (!destination) {
+      setError("Pilih lokasi tujuan terlebih dahulu.");
+
+      setValidationModal(true);
+
+      return;
+    }
+
     stopScanner();
+
     setError("");
     setProcessingImage(true);
+
     setMessage("Menganalisis foto...");
+
     try {
       const res = await scanImageFile(file);
+
       if (!res) {
         throw new Error("Barcode tidak ditemukan.");
       }
+
       const text = getBarcodeText(res);
+
       if (!text) {
         throw new Error("Barcode tidak memiliki teks.");
       }
+
       const format = getBarcodeFormat(res);
+
       await addScanResult(text, format);
     } catch (err) {
       console.error("Image scan error:", err);
+
       setError(
         "Barcode belum terbaca dari foto. Coba gunakan foto yang lebih dekat, terang, dan tidak blur.",
       );
+
       setMessage("Barcode tidak ditemukan.");
     } finally {
       setProcessingImage(false);
+
       if (fileRef.current) {
         fileRef.current.value = "";
       }
@@ -510,9 +832,12 @@ function App() {
     if (!text) {
       return;
     }
+
     try {
       await navigator.clipboard.writeText(text);
+
       setCopiedIndex(index);
+
       setTimeout(() => {
         setCopiedIndex(null);
       }, 1500);
@@ -526,10 +851,13 @@ function App() {
   // =========================================================
   const deleteResult = (index) => {
     const item = results[index];
+
     if (item?.found) {
       setMatchedCount((previous) => Math.max(0, previous - 1));
     }
+
     setResults((previous) => previous.filter((_, i) => i !== index));
+
     setMessage("Hasil scan dihapus.");
   };
 
@@ -538,9 +866,16 @@ function App() {
   // =========================================================
   const reset = () => {
     stopScanner();
+
     setResults([]);
     setMatchedCount(0);
+
+    setCompletionModal(false);
+
+    setMoveSuccess(false);
+
     setError("");
+
     setMessage(
       csvLoaded
         ? "Data masih aktif. Tekan Buka Kamera untuk scan lagi."
@@ -556,6 +891,7 @@ function App() {
       try {
         controlsRef.current?.stop();
       } catch (_) {}
+
       try {
         if (videoRef.current?.srcObject) {
           const stream = videoRef.current.srcObject;
@@ -569,7 +905,9 @@ function App() {
           videoRef.current.srcObject = null;
         }
       } catch (_) {}
+
       controlsRef.current = null;
+
       readerRef.current = null;
     };
   }, []);
@@ -587,6 +925,7 @@ function App() {
 
           <div className="login-header">
             <h1>Tape Disk Scanner</h1>
+
             <p>Memeriksa sesi login...</p>
           </div>
 
@@ -595,6 +934,7 @@ function App() {
       </main>
     );
   }
+
   // =========================================================
   // BELUM LOGIN
   // =========================================================
@@ -609,7 +949,7 @@ function App() {
   }
 
   // =========================================================
-  // HALAMAN MONITOR DATABASE
+  // HALAMAN MONITOR
   // =========================================================
   if (currentPage === "monitor") {
     return (
@@ -620,13 +960,18 @@ function App() {
       </main>
     );
   }
+
   // =========================================================
-  // USER SUDAH LOGIN
+  // MAIN APP
   // =========================================================
   return (
     <main className="app">
       <section className="shell">
         <Header />
+
+        {/* ==================================================
+            BUTTON
+        ================================================== */}
         <div className="data-transfer-button-wrap">
           <button
             type="button"
@@ -634,6 +979,7 @@ function App() {
             onClick={() => setShowDataTransfer(true)}
           >
             <Database size={19} />
+
             <span>Import / Export Data</span>
           </button>
 
@@ -646,9 +992,11 @@ function App() {
             }}
           >
             <Search size={19} />
+
             <span>Monitor Database</span>
           </button>
         </div>
+
         {/* ==================================================
             UPLOAD DATA
         ================================================== */}
@@ -661,7 +1009,7 @@ function App() {
         />
 
         {/* ==================================================
-            STATUS CEK DATABASE
+            STATUS DATABASE
         ================================================== */}
         {databaseChecking && (
           <section className="database-checking">
@@ -671,6 +1019,7 @@ function App() {
 
             <div>
               <strong>Mengecek Database Monitoring</strong>
+
               <span>Sedang mencocokkan data PINDO dan DCI...</span>
             </div>
           </section>
@@ -692,6 +1041,7 @@ function App() {
           onStopScanner={stopScanner}
           onScanImage={scanImage}
         />
+
         <ErrorAlert error={error} />
 
         {/* ==================================================
@@ -704,20 +1054,27 @@ function App() {
 
               <div>
                 <small>DATA PENCARIAN</small>
+
                 <strong>{csvData.length}</strong>
               </div>
             </div>
+
             <div className="summary-item">
               <CheckCircle2 size={20} />
+
               <div>
                 <small>DITEMUKAN</small>
+
                 <strong>{matchedCount}</strong>
               </div>
             </div>
+
             <div className="summary-item">
               <Search size={20} />
+
               <div>
                 <small>DI-SCAN</small>
+
                 <strong>{results.length}</strong>
               </div>
             </div>
@@ -756,17 +1113,20 @@ function App() {
         ================================================== */}
         <button type="button" className="logout-button" onClick={handleLogout}>
           <span className="logout-icon">↪</span>
+
           <span>Logout</span>
         </button>
 
         <Footer />
+
         {showDataTransfer && (
           <DataTransferModal onClose={() => setShowDataTransfer(false)} />
         )}
       </section>
 
       {/* ====================================================
-          DATABASE VALIDATION MODAL
+          MODAL 1 — PILIH TUJUAN
+          MUNCUL SETELAH UPLOAD
       ==================================================== */}
       {validationModal && databaseCheck && (
         <div className="validation-overlay">
@@ -778,47 +1138,54 @@ function App() {
             >
               <X size={20} />
             </button>
+
             <div className="validation-icon">
               <Database size={30} />
             </div>
+
             <h2>Data Tape Disk Sudah Dicek</h2>
+
             <p className="validation-description">
               Sistem sudah mencocokkan data yang di-upload dengan database
               monitoring PINDO dan DCI.
             </p>
-            {/* ==========================================
-                SUMMARY DATABASE
-            ========================================== */}
+
+            {/* SUMMARY */}
             <div className="validation-summary">
               <div>
                 <strong>{databaseCheck.total}</strong>
+
                 <span>Total</span>
               </div>
 
               <div>
                 <strong>{databaseCheck.pindo.length}</strong>
+
                 <span>PINDO</span>
               </div>
 
               <div>
                 <strong>{databaseCheck.dci.length}</strong>
+
                 <span>DCI</span>
               </div>
 
               <div>
                 <strong>{databaseCheck.notFound.length}</strong>
+
                 <span>Tidak Ada</span>
               </div>
             </div>
-            {/* ==========================================
-                PILIH TUJUAN
-            ========================================== */}
+
+            {/* PILIH TUJUAN */}
             <div className="destination-title">
               <MapPin size={18} />
+
               <strong>Data ini akan dibawa ke mana?</strong>
             </div>
 
             <div className="destination-buttons">
+              {/* PINDO */}
               <button
                 type="button"
                 className={
@@ -829,11 +1196,15 @@ function App() {
                 onClick={() => handleDestinationSelect("PINDO")}
               >
                 <Database size={20} />
+
                 <span>
                   <strong>Bawa ke PINDO</strong>
+
                   <small>Semua tape harus berada di DCI</small>
                 </span>
               </button>
+
+              {/* DCI */}
               <button
                 type="button"
                 className={
@@ -844,16 +1215,16 @@ function App() {
                 onClick={() => handleDestinationSelect("DCI")}
               >
                 <Database size={20} />
+
                 <span>
                   <strong>Bawa ke DCI</strong>
+
                   <small>Semua tape harus berada di PINDO</small>
                 </span>
               </button>
             </div>
 
-            {/* ==========================================
-                HASIL VALIDASI
-            ========================================== */}
+            {/* HASIL VALIDASI */}
             {destination && (
               <div
                 className={
@@ -872,11 +1243,14 @@ function App() {
                   <>
                     <div className="validation-result-header">
                       <AlertTriangle size={20} />
+
                       <strong>Data tidak sesuai</strong>
                     </div>
+
                     <p>
                       Tape berikut tidak sesuai untuk dibawa ke {destination}:
                     </p>
+
                     <div className="wrong-tape-list">
                       {(destination === "DCI"
                         ? [...databaseCheck.dci, ...databaseCheck.notFound]
@@ -887,8 +1261,10 @@ function App() {
                           key={`${item.code}-${index}`}
                         >
                           <X size={15} />
+
                           <div>
                             <strong>{item.code}</strong>
+
                             <span>
                               {item.location === "TIDAK_DITEMUKAN"
                                 ? "Tidak ada di database monitoring"
@@ -898,6 +1274,7 @@ function App() {
                         </div>
                       ))}
                     </div>
+
                     <div className="validation-warning-note">
                       Data belum dapat dibawa ke {destination} karena masih ada
                       Tape Disk yang tidak sesuai.
@@ -910,6 +1287,7 @@ function App() {
 
                       <strong>Semua data sesuai</strong>
                     </div>
+
                     <p>
                       Semua {databaseCheck.total} Tape Disk sudah berada di
                       database {destination === "DCI" ? "PINDO" : "DCI"} dan
@@ -925,15 +1303,140 @@ function App() {
               </div>
             )}
 
-            {/* ==========================================
-                CLOSE
-            ========================================== */}
             <button
               type="button"
               className="validation-close-button"
               onClick={() => setValidationModal(false)}
             >
               Tutup
+            </button>
+          </section>
+        </div>
+      )}
+
+      {/* ====================================================
+          MODAL 2 — KONFIRMASI SETELAH SEMUA SCAN
+      ==================================================== */}
+      {completionModal && databaseCheck && destination && (
+        <div className="validation-overlay">
+          <section className="validation-modal move-confirm-modal">
+            <div className="validation-icon">
+              <CheckCircle2 size={30} />
+            </div>
+
+            <h2>Semua Tape Disk Berhasil Ditemukan</h2>
+
+            <p className="validation-description">
+              Seluruh Tape Disk pada data pencarian sudah berhasil ditemukan
+              melalui proses scan.
+            </p>
+
+            <div className="validation-summary">
+              <div>
+                <strong>{databaseCheck.total}</strong>
+
+                <span>Tape Ditemukan</span>
+              </div>
+
+              <div>
+                <strong>{destination}</strong>
+
+                <span>Tujuan</span>
+              </div>
+            </div>
+
+            <div className="move-confirm-warning">
+              <AlertTriangle size={21} />
+
+              <div>
+                <strong>Data akan dipindahkan </strong>
+
+                <span>
+                  Setelah tombol konfirmasi ditekan, data {databaseCheck.total}{" "}
+                  Tape Disk akan dipindahkan dari{" "}
+                  {destination === "DCI" ? "PINDO" : "DCI"} ke {destination}{" "}
+                  pada database monitoring.
+                </span>
+              </div>
+            </div>
+
+            <div className="move-confirm-actions">
+              <button
+                type="button"
+                className="validation-close-button secondary"
+                disabled={movingData}
+                onClick={() => setCompletionModal(false)}
+              >
+                Batal
+              </button>
+
+              <button
+                type="button"
+                className="validation-close-button primary"
+                disabled={movingData}
+                onClick={handleMoveData}
+              >
+                {movingData ? (
+                  <>
+                    <Loader2 size={18} className="spin" />
+                    Memindahkan...
+                  </>
+                ) : (
+                  <>
+                    <Check size={18} />
+                    Konfirmasi & Pindahkan
+                  </>
+                )}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* ====================================================
+          MODAL 3 — BERHASIL
+      ==================================================== */}
+      {moveSuccess && databaseCheck && destination && (
+        <div className="validation-overlay">
+          <section className="validation-modal move-success-modal">
+            <div className="validation-icon success">
+              <CheckCircle2 size={34} />
+            </div>
+
+            <h2>Berhasil Dipindahkan</h2>
+
+            <p className="validation-description">
+              Data Tape Disk berhasil diperbarui pada database monitoring.
+            </p>
+
+            <div className="move-success-count">
+              <strong>{databaseCheck.total}</strong>
+
+              <span>Tape Disk berhasil dipindahkan</span>
+            </div>
+
+            <div className="move-success-location">
+              <div>
+                <small>DARI {destination === "DCI" ? "PINDO" : "DCI"}</small>
+              </div>
+
+              <span>→</span>
+
+              <div>
+                <small>KE {destination}</small>
+              </div>
+            </div>
+
+            <div className="move-refresh-note">
+              Database monitoring sudah diperbarui.
+            </div>
+
+            <button
+              type="button"
+              className="validation-close-button full"
+              onClick={() => window.location.reload()}
+            >
+              Selesai
             </button>
           </section>
         </div>
